@@ -25,22 +25,25 @@ function normalizeWord(word: string): string {
   return word;
 }
 
-async function createMarkovChain(path: string): Promise<Chain> {
+async function createMarkovChain(
+  path: string,
+  order: number = 1,
+): Promise<Chain> {
   const file = Bun.file(path);
   const text = await file.text();
 
-  const words = text.split(/[\s\n]+/);
+  const words = text.split(/[\s\n]+/).map(normalizeWord);
   const countChain: Chain = {};
-  for (let i = 0; i < words.length - 1; i++) {
-    const word = normalizeWord(words[i]!);
-    const nextWord = normalizeWord(words[i + 1]!);
-    if (!countChain[word]) {
-      countChain[word] = {};
+  for (let i = 0; i < words.length - order; i++) {
+    const state = words.slice(i, i + order).join(" ");
+    const nextWord = words[i + order]!;
+    if (!countChain[state]) {
+      countChain[state] = {};
     }
-    if (!countChain[word][nextWord]) {
-      countChain[word][nextWord] = 0;
+    if (!countChain[state][nextWord]) {
+      countChain[state][nextWord] = 0;
     }
-    countChain[word][nextWord]++;
+    countChain[state][nextWord]++;
   }
 
   const markovChain: Chain = {};
@@ -60,21 +63,30 @@ async function createMarkovChain(path: string): Promise<Chain> {
 
 function generateText(
   markovChain: Chain,
-  firstWord: string,
+  firstWord?: string,
   limit: number = 50,
 ): string {
-  let word = firstWord;
-  let text = word;
+  if (!firstWord) {
+    const keys = Object.keys(markovChain);
+    firstWord = keys[Math.floor(Math.random() * keys.length)];
+  }
+
+  let state = firstWord as string;
+  let text = state;
+
   for (let i = 0; i < limit; i++) {
-    if (!markovChain[word]) {
+    if (!markovChain[state]) {
       return text;
     }
     let n = Math.random();
-    for (const i in markovChain[word]) {
-      n -= markovChain[word]![i]!;
+    for (const i in markovChain[state]) {
+      n -= markovChain[state]![i]!;
       if (n <= 0) {
-        word = i;
-        text += " " + word;
+        const words = state.split(" ");
+        words.shift();
+        words.push(i);
+        state = words.join(" ");
+        text += " " + i;
         break;
       }
     }
@@ -83,7 +95,7 @@ function generateText(
 }
 
 const path = "./data/les miserables.txt";
-const markovChain = await createMarkovChain(path);
+const markovChain = await createMarkovChain(path, 3);
 
-const generatedText = generateText(markovChain, "the");
+const generatedText = generateText(markovChain);
 console.log(generatedText);
