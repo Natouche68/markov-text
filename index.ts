@@ -22,6 +22,8 @@ function normalizeWord(word: string): string {
     "”",
     "“",
     "’",
+    "«",
+    "»",
   ];
   punctuation.forEach((v) => {
     word = word.replaceAll(v, "");
