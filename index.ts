@@ -1,3 +1,6 @@
+import { exit } from "process";
+import { parseArgs } from "util";
+
 type Chain = Record<string, Record<string, number>>;
 
 function normalizeWord(word: string): string {
@@ -18,6 +21,7 @@ function normalizeWord(word: string): string {
     "\n",
     "”",
     "“",
+    "’",
   ];
   punctuation.forEach((v) => {
     word = word.replaceAll(v, "");
@@ -94,8 +98,34 @@ function generateText(
   return text;
 }
 
-const path = "./data/les miserables.txt";
-const markovChain = await createMarkovChain(path, 3);
+const { values, positionals } = parseArgs({
+  args: Bun.argv,
+  options: {
+    order: {
+      type: "string",
+    },
+    start: {
+      type: "string",
+    },
+    limit: {
+      type: "string",
+    },
+  },
+  strict: true,
+  allowPositionals: true,
+});
 
-const generatedText = generateText(markovChain);
+if (positionals.length < 3) {
+  console.error("No path provided");
+  exit(1);
+}
+
+const path = positionals[2];
+const markovChain = await createMarkovChain(path!, Number(values.order ?? 1));
+
+const generatedText = generateText(
+  markovChain,
+  values.start,
+  Number(values.limit ?? 50),
+);
 console.log(generatedText);
